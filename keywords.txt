@@ -1,0 +1,63 @@
+#######################################
+# Syntax Coloring Map For MCRF522
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+RC522_Driver	KEYWORD1
+StatusCode	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+reset	KEYWORD2
+getVersion	KEYWORD2
+selfTest	KEYWORD2
+setBaudRate	KEYWORD2
+setModulation	KEYWORD2
+setCRCMode	KEYWORD2
+configureRF	KEYWORD2
+printRFRegisters	KEYWORD2
+setAntenna	KEYWORD2
+setAntennaGain	KEYWORD2
+getAntennaGain	KEYWORD2
+calculateCRC	KEYWORD2
+transceiveData	KEYWORD2
+peekRegister	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+PICC_CMD_REQA	LITERAL1
+PICC_CMD_WUPA	LITERAL1
+PICC_CMD_CT	LITERAL1
+PICC_CMD_SEL_CL1	LITERAL1
+PICC_CMD_SEL_CL2	LITERAL1
+PICC_CMD_SEL_CL3	LITERAL1
+PICC_CMD_HLTA	LITERAL1
+PICC_CMD_RATS	LITERAL1
+
+STATUS_OK	LITERAL1
+STATUS_TIMEOUT	LITERAL1
+STATUS_ERROR	LITERAL1
+STATUS_COLLISION	LITERAL1
+STATUS_NO_ROOM	LITERAL1
+
+BAUD_106KBPS	LITERAL1
+BAUD_212KBPS	LITERAL1
+BAUD_424KBPS	LITERAL1
+BAUD_848KBPS	LITERAL1
+
+PCD_RxGain_18dB	LITERAL1
+PCD_RxGain_25dB	LITERAL1
+PCD_RxGain_30dB	LITERAL1
+PCD_RxGain_36dB	LITERAL1
+PCD_RxGain_40dB	LITERAL1
+PCD_RxGain_48dB	LITERAL1
+
+RC522_Driver_Register	KEYWORD1
