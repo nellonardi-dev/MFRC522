@@ -1,168 +1,109 @@
-# MCRF522 Arduino Library
+# MFRC522‑NTAG21x – Arduino Library for the MFRC522 RFID reader
 
-This is an Arduino library for the MFRC522 RFID reader module. It provides full support for communication with various types of RFID cards and tags, including MIFARE Classic, Ultralight, and ISO/IEC 14443A compatible cards.
+## 📖 Overview
+This library implements a **low‑level driver** and two high‑level protocols for the MFRC522 NFC/RFID chip.
+| Layer | Files | Purpose |
+|-------|-------|---------|
+| Driver | `src/RC522_Driver.{cpp,h}` | SPI communication, register access, FIFO handling, reset & configuration helpers. |
+| ISO/IEC 14443‑A | `src/RC522_ISO14443A.{cpp,h}` | Card discovery (REQ/WUP), anti‑collision, UID extraction, SAK handling and generic transceive wrapper. |
+| NTAG21x | `src/RC522_NTAG21X.{cpp,h}` | High‑level helpers to read/write the 2 kB / 4 kB NTAG21x memory layout, factory reset and page dumps. |
 
-## Features
+The code is pure C++17 and depends only on Arduino core (`Arduino.h`, `SPI.h`). It compiles with any board that provides standard SPI.
 
-- Full compatibility with MFRC522 chip (versions 0.0, 1.0, 2.0)
-- Support for Fudan Semiconductor FM17522 clones
-- Complete implementation of all RF communication registers  
-- Self-test functionality with version detection
-- CRC calculation and verification capabilities
-- Antenna gain control and modulation configuration
-- Baud rate setting for different communication speeds
-- Support for multiple SPI interfaces
+### Design goals
+- **Encapsulation** – All hardware access lives in `RC522_Driver`; protocol classes operate on a reference to this driver.  
+- **Clear error handling** – Driver returns `StatusCode` enums; protocol layers translate them into `ISO14443A_Status`.  
+- **Extensibility** – Adding other protocols (e.g., ISO/IEC 18092) follows the same pattern.
 
-## Hardware Requirements
+### Features
+- Low‑level SPI driver with FIFO support and timeout handling.  
+- Full ISO/IEC 14443‑A card discovery, anti‑collision, UID extraction and SAK handling.  
+- NTAG21x (213/215/216) read/write, page dump and factory reset helpers.  
+- CRC_A calculation according to ISO 14443‑A.  
+- Example sketches for driver, ISO14443‑A test, NTAG21x auto‑dump and low‑level register dump.
 
-- MFRC522 RFID module (or compatible clone)
-- Arduino board (Uno, Mega, ESP32, etc.)
-- SPI connection between Arduino and MFRC522:
-  - MOSI → Pin 11 (Arduino Uno) or GPIO 23 (ESP32)
-  - MISO → Pin 12 (Arduino Uno) or GPIO 19 (ESP32)  
-  - SCK  → Pin 13 (Arduino Uno) or GPIO 18 (ESP32)
-  - SS   → Pin 10 (or any digital pin, Arduino Uno) or GPIO 5 (ESP32)
-  - RST  → Pin 9 (or any digital pin) 
-- Power supply: 3.3V (MFRC522 requires 3.3V logic levels)
+### Installation
+#### Arduino IDE
+1. Open **Sketch → Include Library → Manage Libraries…**
+2. Search for *MFRC522‑NTAG21x* and click **Install**.
+3. Restart the IDE if prompted.
+#### Manual (ZIP)
+1. Download or clone this repository.
+2. In Arduino IDE go to **Sketch → Include Library → Add .ZIP Library…** and select the downloaded ZIP.
 
-## Installation
+### Hardware Connections
+| Pin | MFRC522 | Arduino |
+|-----|---------|--------|
+| SCK | 5       | `SCK` |
+| MOSI| 7       | `MOSI` |
+| MISO| 6       | `MISO` |
+| SS/SDA | 10   | any digital pin (example uses **5**) |
+| RST | 9        | any digital pin (example uses **26** on ESP32) |
 
-### Using Arduino IDE Library Manager
-1. Open Arduino IDE
-2. Go to Sketch > Include Library > Manage Libraries...
-3. Search for "MCRF522"
-4. Install the library
+> ⚠️ The MFRC522 operates at **3.3 V**; if your board is 5 V use a level shifter or a 3.3 V module.
 
-### Manual Installation
-```bash
-cd ~/Arduino/libraries/
-git clone https://github.com/nello-nardi/MCRF522.git
-```
-
-## Quick Start Example
-
+### Minimal Example
 ```cpp
-#include <SPI.h>
 #include <RC522_Driver.h>
-
-#define RC522_SS_PIN   10
-#define RC522_RST_PIN  9
-
-RC522_Driver reader(RC522_SS_PIN, RC522_RST_PIN);
-
-void setup() {
-  Serial.begin(115200);
-  SPI.begin();
-  reader.begin();
-  
-  // Test communication and version detection
-  uint8_t version = reader.getVersion();
-  if (version == 0x90 || version == 0x91 || version == 0x92) {
-    Serial.println("MFRC522 detected");
-  }
+#include <RC522_ISO14443A.h>
+#define SS_PIN   5
+#define RST_PIN 26
+RC522_Driver driver(SS_PIN, RST_PIN);
+RC522_ISO14443A reader(driver);
+void setup(){
+    Serial.begin(115200);
+    if(!reader.begin()){Serial.println("MFRC522 init failed");while(true);}
 }
-
-void loop() {
-  // Detect cards with REQA command
-  const uint8_t request = PICC_CMD_REQA;
-  uint8_t response[8] = {0};
-  uint8_t responseLength = 0;
-  
-  StatusCode status = reader.transceiveData(
-    &request,
-    1,
-    response,
-    &responseLength,
-    sizeof(response),
-    7,          // REQA uses 7 bits
-    0,
-    nullptr,
-    nullptr,
-    false
-  );
-  
-  if (status == STATUS_OK && responseLength >= 2) {
-    Serial.print("Card detected! ATQA: ");
-    Serial.print(response[0], HEX);
-    Serial.print(" ");
-    Serial.println(response[1], HEX);
-  }
+void loop(){
+    if(reader.request()==ISO14443A_OK && reader.anticollision()==ISO14443A_OK && reader.selectCard()==ISO14443A_OK){
+        const ISO14443A_UID &uid=reader.getUID();
+        Serial.print("UID: ");
+        for(uint8_t i=0;i<uid.size;++i){if(uid.bytes[i]<0x10)Serial.print('0');Serial.print(uid.bytes[i],HEX);if(i<uid.size-1)Serial.print(':');}
+        Serial.println();
+        reader.halt();
+    }
+    delay(250);
 }
 ```
 
-## API Reference
+### Examples Folder Structure
+| Example | Description |
+|---------|-------------|
+| **RC522_ISO14443A_Test** | Demonstrates card detection and UID printing. |
+| **NTAG21x_AutoDump** | Reads an NTAG213/215/216 tag and prints all memory pages in hex. |
+| **iso_test** | Low‑level ISO14443-A register dump for debugging. |
+| **rfid_module_test** | Full read/write test against a real RFID module (requires hardware). |
 
-### Constructor
-```cpp
-RC522_Driver(uint8_t ssPin, uint8_t resetPin = 255, SPIClass &spi = SPI)
+### Repository Layout
 ```
-Initializes the RC522 reader with specified SS and reset pins.
+MFRC522-NTAG21x/
+├── src/                     # Library source files (.cpp/.h)
+│   ├── RC522_Driver.cpp
+│   ├── RC522_Driver.h
+│   ├── RC522_ISO14443A.cpp
+│   ├── RC522_ISO14443A.h
+│   ├── RC522_NTAG21X.cpp
+│   └── RC522_NTAG21X.h
+├── examples/                # Example sketches
+│   ├── RC522_ISO14443A_Test/
+│   │   └── RC522_ISO14443A_Test.ino
+│   ├── NTAG21x_AutoDump/
+│   │   └── NTAG21x_AutoDump.ino
+│   ├── iso_test/
+│   │   └── iso_test.ino
+│   └── rfid_module_test/
+│       └── rfid_module_test.ino
+├── library.properties        # Arduino metadata
+├── CHANGELOG.md              # Release notes
+├── LICENSE                   # MIT license
+└── README.md                 # This file
+```
 
-### Configuration Methods
-- `void begin()` - Initialize the RFID module  
-- `void reset()` - Reset the RFID module
-- `uint8_t getVersion()` - Get chip version number
-- `bool selfTest()` - Run internal self-test
-- `void setBaudRate(BaudRate rate)` - Set communication baud rate
-- `void setModulation(bool ask100)` - Configure modulation type  
-- `void setCRCMode(uint8_t preset)` - Set CRC mode
+### Contributing
+Feel free to open issues or pull requests on the GitHub repository.  Before submitting:
+- Update `CHANGELOG.md` with your changes.
+- Add or update tests if applicable (the library currently has no automated test suite).
+- Ensure that the code compiles on at least one Arduino board in the IDE.
 
-### RF Configuration 
-- `void configureRF()` - Configure RF parameters for ISO 14443A
-- `void printRFRegisters()` - Print all RF registers (debug)
-- `void setAntenna(bool enabled)` - Enable/disable antenna
-- `void setAntennaGain(PCD_RxGain gain)` - Set antenna gain level  
-- `PCD_RxGain getAntennaGain()` - Get current antenna gain
-
-### Communication Methods
-- `StatusCode calculateCRC(const uint8_t* data, uint8_t length, uint8_t* result)` - Calculate CRC
-- `StatusCode transceiveData(...)` - Transmit and receive data with the card
-
-## Error Codes
-
-- `STATUS_OK` - Operation completed successfully
-- `STATUS_TIMEOUT` - Timeout occurred during operation  
-- `STATUS_ERROR` - General error occurred
-- `STATUS_COLLISION` - Bit collision detected
-- `STATUS_NO_ROOM` - Buffer overflow or not enough space
-
-## Supported Cards and Tags
-
-- MIFARE Classic (1K, 4K)
-- MIFARE Ultralight 
-- ISO/IEC 14443A compatible cards
-- Various RFID tags
-
-## Troubleshooting
-
-### Common Issues:
-1. **No response from module**: Check wiring connections, especially SS and RST pins
-2. **Wrong version returned (0x00 or 0xFF)**: Verify SPI connection and power supply  
-3. **Timeout errors**: Ensure card is properly positioned on the antenna
-4. **CRC errors**: Check for interference between multiple RFID readers
-
-## Examples Included
-
-1. `rf522_test.ino` - Basic test with version detection, self-test, and card reading
-2. `rf522_Multimodule_with_shared_RST_test.ino` - Test for multi-module configurations
-
-## Supported Platforms
-
-- Arduino Uno/Mega/Nano
-- ESP32 (VSPI classico)
-
-## Contributing
-
-1. Fork it
-2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Commit your changes (`git commit -am 'Add some fooBar'`) 
-4. Push to the branch (`git push origin feature/fooBar`)
-5. Create a new Pull Request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Author
-
-Created by Nello Nardi
+### License
+MIT – see [LICENSE](LICENSE) for details.

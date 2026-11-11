@@ -1,0 +1,15 @@
+.DS_Store
+Thumbs.db
+*.o
+*.a
+*.elf
+*.hex
+*.bin
+*.map
+build/
+cmake-build-*/
+.vscode/
+.idea/
+*.bak
+*.tmp
+.old/

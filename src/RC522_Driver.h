@@ -169,68 +169,104 @@ enum StatusCode : uint8_t {
     STATUS_NO_ROOM
 };
 
-enum PICC_Command : byte {
-	// The commands used by the PCD to manage communication with several PICCs (ISO 14443-3, Type A, section 6.4)
-	PICC_CMD_REQA			= 0x26,		// REQuest command, Type A. Invites PICCs in state IDLE to go to READY and prepare for anticollision or selection. 7 bit frame.
-	PICC_CMD_WUPA			= 0x52,		// Wake-UP command, Type A. Invites PICCs in state IDLE and HALT to go to READY(*) and prepare for anticollision or selection. 7 bit frame.
-	PICC_CMD_CT				= 0x88,		// Cascade Tag. Not really a command, but used during anti collision.
-	PICC_CMD_SEL_CL1		= 0x93,		// Anti collision/Select, Cascade Level 1
-	PICC_CMD_SEL_CL2		= 0x95,		// Anti collision/Select, Cascade Level 2
-	PICC_CMD_SEL_CL3		= 0x97,		// Anti collision/Select, Cascade Level 3
-	PICC_CMD_HLTA			= 0x50,		// HaLT command, Type A. Instructs an ACTIVE PICC to go to state HALT.
-	PICC_CMD_RATS           = 0xE0,     // Request command for Answer To Reset.
-};
-
 class RC522_Driver {
 private:
+    // --------------------------------------------------
+    // Hardware
+    // --------------------------------------------------
     uint8_t _ssPin;
     uint8_t _resetPin;
     SPIClass* _spi;
 
+    // --------------------------------------------------
+    // Accesso ai registri
+    // --------------------------------------------------
     void writeRegister(uint8_t reg, uint8_t value);
-    void writeRegisterMultiple(uint8_t reg, const uint8_t* values, uint8_t count);
+
+    void writeRegisterMultiple(
+        uint8_t reg,
+        const uint8_t* values,
+        uint8_t count
+    );
+
     uint8_t readRegister(uint8_t reg);
-    void readRegisterMultiple(uint8_t reg, uint8_t* values, uint8_t count);
 
-    void writeFIFO(const uint8_t* data, uint8_t length);
-    void readFIFO(uint8_t* data, uint8_t* length);
+    void readRegisterMultiple(
+        uint8_t reg,
+        uint8_t* values,
+        uint8_t count
+    );
 
+    // --------------------------------------------------
+    // FIFO
+    // --------------------------------------------------
+	void writeFIFO(const uint8_t* data, uint8_t length);
+	StatusCode readFIFO(
+	    uint8_t* data,
+	    uint8_t capacity,
+	    uint8_t* length
+	);	
+
+	// --------------------------------------------------
+    // Set Timer
+    // --------------------------------------------------
     void configureTimer();
-    
-public:
-    RC522_Driver(
-        uint8_t ssPin, 
-        uint8_t resetPin = 255, 
-        SPIClass &spi = SPI
-    );
-    // --- Configurazione RF dinamica (usata dai protocolli) ---
-    enum BaudRate : uint8_t {
-        BAUD_106KBPS = 0x00,  // ISO 14443-A default
-        BAUD_212KBPS = 0x01,  // FeliCa, ISO 14443-A (dopo PPS)
-        BAUD_424KBPS = 0x02,  // FeliCa, ISO 14443-A (dopo PPS)
-        BAUD_848KBPS = 0x03   // ISO 14443-A (dopo PPS)
-    };
-    void setBaudRate(BaudRate rate);
-    void setModulation(bool ask100); // true = ASK 100%, false = ASK variabile
-    void setCRCMode(uint8_t preset); // 0x3D = ISO 14443, altri valori per standard diversi
 
-    void configureRF( //configurazione per protocollo ISO/IEC 14443A
-        uint8_t txMode = 0x00,      // 106kbps  ISO/IEC 14443A
-        uint8_t rxMode = 0x00,      // 106kbps
-        uint8_t txASK = 0x40,       // ASK 100%
-        uint8_t modWidth = 0x26,    // Larghezza modulazione
-        uint8_t modeReg = 0x3D      // CRC preset ISO 14443
+public:
+    // --------------------------------------------------
+    // Velocità supportate dal MFRC522
+    // --------------------------------------------------
+    enum BaudRate : uint8_t {
+        BAUD_106KBPS = 0,
+        BAUD_212KBPS = 1,
+        BAUD_424KBPS = 2,
+        BAUD_848KBPS = 3
+    };
+
+    // --------------------------------------------------
+    // Costruttore e inizializzazione
+    // --------------------------------------------------
+    RC522_Driver(
+        uint8_t ssPin,
+        uint8_t resetPin = 255,
+        SPIClass& spi = SPI
     );
-	void printRFRegisters();
+
     void begin();
     void reset();
+
+    // --------------------------------------------------
+    // Identificazione e diagnostica
+    // --------------------------------------------------
     uint8_t getVersion();
     bool selfTest();
+    void printRFRegisters();
 
+    // --------------------------------------------------
+    // Configurazione hardware RF
+    // --------------------------------------------------
+    void configureRF(
+        uint8_t txMode,
+        uint8_t rxMode,
+        uint8_t txASK,
+        uint8_t modWidth,
+        uint8_t modeReg
+    );
+
+    void setBaudRate(BaudRate rate);
+    void setModulation(bool ask100);
+    void setCRCMode(uint8_t preset);
+
+    // --------------------------------------------------
+    // Antenna e ricevitore
+    // --------------------------------------------------
     void setAntenna(bool enabled);
     void setAntennaGain(PCD_RxGain gain);
-    PCD_RxGain getAntennaGain(); 
+    PCD_RxGain getAntennaGain();
 
+    // --------------------------------------------------
+    // Funzioni hardware di comunicazione
+    // --------------------------------------------------
     StatusCode calculateCRC(
         const uint8_t* data,
         uint8_t length,
@@ -248,12 +284,12 @@ public:
         uint8_t* rxLastBits = nullptr,
         uint8_t* collisionPos = nullptr,
         bool checkCRC = false
-    );  
-    uint8_t peekRegister(uint8_t reg); 
-   
-        
+    );
+
+    // --------------------------------------------------
+    // Diagnostica registri
+    // --------------------------------------------------
+    uint8_t peekRegister(uint8_t reg);
 };
 
-#endif
-
-
+#endif // RC522_DRIVER_H
