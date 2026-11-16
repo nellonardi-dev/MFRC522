@@ -1,109 +1,250 @@
-# MFRC522‑NTAG21x – Arduino Library for the MFRC522 RFID reader
+# MFRC522-NTAG21x
 
-## 📖 Overview
-This library implements a **low‑level driver** and two high‑level protocols for the MFRC522 NFC/RFID chip.
-| Layer | Files | Purpose |
-|-------|-------|---------|
-| Driver | `src/RC522_Driver.{cpp,h}` | SPI communication, register access, FIFO handling, reset & configuration helpers. |
-| ISO/IEC 14443‑A | `src/RC522_ISO14443A.{cpp,h}` | Card discovery (REQ/WUP), anti‑collision, UID extraction, SAK handling and generic transceive wrapper. |
-| NTAG21x | `src/RC522_NTAG21X.{cpp,h}` | High‑level helpers to read/write the 2 kB / 4 kB NTAG21x memory layout, factory reset and page dumps. |
+**A modular Arduino library for the MFRC522 RFID/NFC reader, ISO/IEC 14443‑A communication and NTAG21x tags.**
+The implementation closely follows the official NXP data sheets:
+* MFRC522 – <https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf>
+* NTAG213/215/216 – <https://www.nxp.com/docs/en/data-sheet/NTAG213_215_216.pdf>
+Copies of these PDF documents are included in the project under the `datasheet` directory for quick reference.
 
-The code is pure C++17 and depends only on Arduino core (`Arduino.h`, `SPI.h`). It compiles with any board that provides standard SPI.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-### Design goals
-- **Encapsulation** – All hardware access lives in `RC522_Driver`; protocol classes operate on a reference to this driver.  
-- **Clear error handling** – Driver returns `StatusCode` enums; protocol layers translate them into `ISO14443A_Status`.  
-- **Extensibility** – Adding other protocols (e.g., ISO/IEC 18092) follows the same pattern.
+## Overview
 
-### Features
-- Low‑level SPI driver with FIFO support and timeout handling.  
-- Full ISO/IEC 14443‑A card discovery, anti‑collision, UID extraction and SAK handling.  
-- NTAG21x (213/215/216) read/write, page dump and factory reset helpers.  
-- CRC_A calculation according to ISO 14443‑A.  
-- Example sketches for driver, ISO14443‑A test, NTAG21x auto‑dump and low‑level register dump.
+MFRC522-NTAG21x is an Arduino library designed to provide a modular interface to the MFRC522 RFID/NFC reader.
 
-### Installation
-#### Arduino IDE
-1. Open **Sketch → Include Library → Manage Libraries…**
-2. Search for *MFRC522‑NTAG21x* and click **Install**.
-3. Restart the IDE if prompted.
-#### Manual (ZIP)
+The library is organized into three independent but interconnected layers:
+
+- **Driver layer:** handles low-level communication with the MFRC522 through SPI.
+- **Protocol layer:** implements ISO/IEC 14443-A card discovery and communication.
+- **Tag layer:** provides high-level operations for NTAG21x tags.
+
+This architecture separates hardware access from protocol implementation and tag-specific operations, making the library easier to maintain, extend and debug.
+
+## Features
+
+- Low-level MFRC522 driver with SPI communication.
+- Register access and FIFO management.
+- Hardware reset and reader configuration helpers.
+- Timeout handling and status-code-based error reporting.
+- ISO/IEC 14443-A card discovery.
+- REQA and WUPA commands.
+- Anti-collision and UID extraction.
+- SAK handling and card selection.
+- CRC_A calculation.
+- NTAG213, NTAG215 and NTAG216 memory operations.
+- NTAG21x page reading and writing.
+- Memory dump utilities.
+- Factory reset helpers.
+- Example sketches for testing and development.
+
+## Architecture
+
+The library is divided into three main layers.
+
+| Layer | Main files | Responsibility |
+|---|---|---|
+| Driver | `RC522_Driver.h/.cpp` | SPI communication, registers, FIFO, reset and hardware configuration |
+| ISO/IEC 14443-A | `RC522_ISO14443A.h/.cpp` | Card discovery, anti-collision, UID extraction and card selection |
+| NTAG21x | `RC522_NTAG21X.h/.cpp` | NTAG213/215/216 memory operations |
+
+### 1. RC522 Driver
+
+`RC522_Driver` is the lowest-level component of the library.
+
+It provides direct access to the MFRC522 hardware and handles:
+
+- SPI communication.
+- Register read and write operations.
+- FIFO management.
+- Hardware reset.
+- Reader configuration.
+- CRC-related operations.
+- Error and status reporting.
+
+The driver is designed to be independent of higher-level RFID protocols.
+
+### 2. ISO/IEC 14443-A
+
+`RC522_ISO14443A` implements the communication procedures required to discover and select ISO/IEC 14443-A cards.
+
+Its main responsibilities include:
+
+- REQA and WUPA requests.
+- Card detection.
+- Anti-collision procedures.
+- UID extraction.
+- SAK handling.
+- Card selection.
+- Generic transceive operations.
+
+This layer uses an existing `RC522_Driver` instance rather than accessing the hardware directly.
+
+### 3. NTAG21x
+
+`RC522_NTAG21X` provides higher-level operations for NTAG21x tags.
+
+Supported tag families include:
+
+- NTAG213
+- NTAG215
+- NTAG216
+
+The layer provides utilities for working with tag memory, including page reading, page writing, memory dumps and factory-reset operations.
+
+## Installation
+
+### Arduino IDE
+
 1. Download or clone this repository.
-2. In Arduino IDE go to **Sketch → Include Library → Add .ZIP Library…** and select the downloaded ZIP.
+2. In Arduino IDE, select **Sketch → Include Library → Add .ZIP Library...**
+3. Select the downloaded repository ZIP file.
+4. Include the required library headers in your sketch.
 
-### Hardware Connections
-| Pin | MFRC522 | Arduino |
-|-----|---------|--------|
-| SCK | 5       | `SCK` |
-| MOSI| 7       | `MOSI` |
-| MISO| 6       | `MISO` |
-| SS/SDA | 10   | any digital pin (example uses **5**) |
-| RST | 9        | any digital pin (example uses **26** on ESP32) |
+### Manual installation
 
-> ⚠️ The MFRC522 operates at **3.3 V**; if your board is 5 V use a level shifter or a 3.3 V module.
+Copy the library folder into your Arduino libraries directory.
 
-### Minimal Example
+The folder should contain the library metadata file and the source files.
+
+Restart Arduino IDE after installation if necessary.
+
+## Hardware connections
+
+The MFRC522 communicates with the microcontroller through SPI.
+
+| MFRC522 pin | Microcontroller connection |
+|---|---|
+| SDA / SS | Any suitable digital output pin |
+| SCK | SPI SCK |
+| MOSI | SPI MOSI |
+| MISO | SPI MISO |
+| RST | Any suitable digital output pin |
+| GND | GND |
+| 3.3V | 3.3V supply |
+
+**Important:** The MFRC522 operates at 3.3 V. Do not connect its power supply or signal pins directly to 5 V unless the module and the electrical interface are explicitly designed to support it.
+
+SPI pin assignments depend on the selected microcontroller board. Always check the board documentation.
+
+## Quick start
+
+The following example initializes the reader, detects an ISO/IEC 14443-A card and prints its UID.
+
 ```cpp
 #include <RC522_Driver.h>
 #include <RC522_ISO14443A.h>
+
 #define SS_PIN   5
-#define RST_PIN 26
+#define RST_PIN  26
+
 RC522_Driver driver(SS_PIN, RST_PIN);
 RC522_ISO14443A reader(driver);
-void setup(){
+
+void setup() {
     Serial.begin(115200);
-    if(!reader.begin()){Serial.println("MFRC522 init failed");while(true);}
+
+    if (!reader.begin()) {
+        Serial.println("MFRC522 initialization failed");
+        while (true);
+    }
+
+    Serial.println("MFRC522 initialized");
 }
-void loop(){
-    if(reader.request()==ISO14443A_OK && reader.anticollision()==ISO14443A_OK && reader.selectCard()==ISO14443A_OK){
-        const ISO14443A_UID &uid=reader.getUID();
+
+void loop() {
+    if (reader.request() == ISO14443A_OK &&
+        reader.anticollision() == ISO14443A_OK &&
+        reader.selectCard() == ISO14443A_OK) {
+
+        const ISO14443A_UID &uid = reader.getUID();
+
         Serial.print("UID: ");
-        for(uint8_t i=0;i<uid.size;++i){if(uid.bytes[i]<0x10)Serial.print('0');Serial.print(uid.bytes[i],HEX);if(i<uid.size-1)Serial.print(':');}
+
+        for (uint8_t i = 0; i < uid.size; i++) {
+            if (uid.bytes[i] < 0x10) {
+                Serial.print('0');
+            }
+
+            Serial.print(uid.bytes[i], HEX);
+
+            if (i < uid.size - 1) {
+                Serial.print(':');
+            }
+        }
+
         Serial.println();
+
         reader.halt();
     }
+
     delay(250);
 }
 ```
 
-### Examples Folder Structure
+This example uses the ISO/IEC 14443-A layer. The driver is instantiated separately and passed to the protocol object.
+
+## Multiple MFRC522 readers
+
+The library can also be used in projects with multiple MFRC522 modules connected to the same SPI bus.
+
+A typical configuration uses:
+
+- Shared SCK, MOSI and MISO lines.
+- A separate SS pin for each reader.
+- Optionally, a shared RST line.
+
+Each reader must have its own driver and protocol instances.
+
+When multiple modules share the same reset line, resetting that line affects every connected reader. All readers must therefore be initialized again after a shared hardware reset.
+
+For a complete example, including `hardReset()`, `start()` and `restart()` functions, see the dedicated multi-reader guide in the project documentation.
+
+## Examples
+
+The `examples/` directory contains sketches demonstrating the library's features.
+
 | Example | Description |
-|---------|-------------|
-| **RC522_ISO14443A_Test** | Demonstrates card detection and UID printing. |
-| **NTAG21x_AutoDump** | Reads an NTAG213/215/216 tag and prints all memory pages in hex. |
-| **iso_test** | Low‑level ISO14443-A register dump for debugging. |
-| **rfid_module_test** | Full read/write test against a real RFID module (requires hardware). |
+|---|---|
+| `RC522_ISO14443A_Test` | Card detection, selection and UID reading |
+| `NTAG21x_AutoDump` | Reads NTAG21x memory and prints its contents |
+| `iso_test` | ISO/IEC 14443-A communication and low-level diagnostics |
+| `rfid_module_test` | Reader testing and hardware diagnostics |
 
-### Repository Layout
-```
-MFRC522-NTAG21x/
-├── src/                     # Library source files (.cpp/.h)
-│   ├── RC522_Driver.cpp
-│   ├── RC522_Driver.h
-│   ├── RC522_ISO14443A.cpp
-│   ├── RC522_ISO14443A.h
-│   ├── RC522_NTAG21X.cpp
-│   └── RC522_NTAG21X.h
-├── examples/                # Example sketches
-│   ├── RC522_ISO14443A_Test/
-│   │   └── RC522_ISO14443A_Test.ino
-│   ├── NTAG21x_AutoDump/
-│   │   └── NTAG21x_AutoDump.ino
-│   ├── iso_test/
-│   │   └── iso_test.ino
-│   └── rfid_module_test/
-│       └── rfid_module_test.ino
-├── library.properties        # Arduino metadata
-├── CHANGELOG.md              # Release notes
-├── LICENSE                   # MIT license
-└── README.md                 # This file
-```
+Check the individual example folders for the corresponding sketches and implementation details.
 
-### Contributing
-Feel free to open issues or pull requests on the GitHub repository.  Before submitting:
-- Update `CHANGELOG.md` with your changes.
-- Add or update tests if applicable (the library currently has no automated test suite).
-- Ensure that the code compiles on at least one Arduino board in the IDE.
+## Error handling
 
-### License
-MIT – see [LICENSE](LICENSE) for details.
+The library uses status codes to report the outcome of hardware and protocol operations.
+
+The driver layer provides its own status information, while higher-level protocol classes translate relevant errors into protocol-specific status codes.
+
+Always check the return value of operations that can fail, especially during card discovery, communication and memory access.
+
+## Design principles
+
+The library follows a few core design principles:
+
+- **Separation of concerns:** hardware access, protocol handling and tag operations are kept in separate layers.
+- **Encapsulation:** protocol classes use the driver interface instead of directly manipulating hardware registers.
+- **Explicit error handling:** operations report their status through dedicated codes.
+- **Extensibility:** additional protocols and tag families can be implemented as separate layers.
+
+## Contributing
+
+Contributions, bug reports and suggestions are welcome.
+
+Before submitting changes:
+
+1. Check the existing code structure and conventions.
+2. Update the `CHANGELOG.md` when appropriate.
+3. Add or update examples when introducing new functionality.
+4. Test changes on real hardware whenever possible.
+5. Open an issue or pull request describing the changes.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for additional information.
+
+## License
+
+This project is distributed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.
