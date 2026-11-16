@@ -201,14 +201,16 @@ For a complete example, including `hardReset()`, `start()` and `restart()` funct
 
 ## Examples
 
-The `examples/` directory contains sketches demonstrating the library's features.
+The `examples/` directory contains a variety of sketches that showcase the library's functionality. The folder hierarchy has been reorganised compared to earlier releases; the table below lists the current examples with their paths relative to the repository root.
 
-| Example | Description |
+| Example (path) | Description |
 |---|---|
-| `RC522_ISO14443A_Test` | Card detection, selection and UID reading |
-| `NTAG21x_AutoDump` | Reads NTAG21x memory and prints its contents |
-| `iso_test` | ISO/IEC 14443-A communication and low-level diagnostics |
-| `rfid_module_test` | Reader testing and hardware diagnostics |
+| `examples/tests/ISO14443A/card_test` | Card detection, selection and UID reading. |
+| `examples/tests/ISO14443A/request_test` | Low‑level ISO/IEC 14443‑A request tests (REQA/WUPA). |
+| `examples/NTAG21x/NTAG21x_AutoDump` | Reads the full memory of an NTAG21x tag and prints its contents. |
+| `examples/NTAG21x/NTAG21x_Factory_Reset` | Performs a factory reset on an NTAG21x tag. |
+| `examples/tests/MFRC522/single_module_test` | Basic single‑module test: version detection, self‑test and card read. |
+| `examples/tests/MFRC522/multimodule_shared_pin_reset_test` | Demonstrates handling of multiple MFRC522 modules with a shared reset pin. |
 
 Check the individual example folders for the corresponding sketches and implementation details.
 
