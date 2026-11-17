@@ -139,6 +139,39 @@ void finishCardOperation(const ISO14443A_UID& uid) {
     waitForCardRemoval(uid);
 }
 
+// -----------------------------------------------------
+// Serial confirmation
+// -----------------------------------------------------
+
+bool waitForConfirmation() {
+
+    Serial.println();
+    Serial.println(F("[WARNING] AUTHLIM is different from zero."));
+    Serial.println(F("[WARNING] Authentication attempts are limited."));
+    Serial.println(F("Continue with password authentication?"));
+    Serial.println(F("Type Y and press ENTER to continue."));
+
+    while (true) {
+
+        if (!Serial.available()) {
+            delay(10);
+            continue;
+        }
+
+        char c = Serial.read();
+
+        if (c == '\r' || c == '\n')
+            continue;
+
+        delay(20);
+
+        while (Serial.available())
+            Serial.read();
+
+        return c == 'Y' || c == 'y';
+    }
+}
+
 // =====================================================
 // SETUP
 // =====================================================
@@ -222,7 +255,8 @@ void loop() {
         finishCardOperation(originalUID);
         return;
     }
-
+    
+/*
     // ---------------------------------
     // 4. Check password protection
     // ---------------------------------
@@ -242,8 +276,26 @@ void loop() {
     Serial.print(F("[CHECK] Password protection active from page "));
     Serial.println(cfg.auth0);
 
+*/    
     // ---------------------------------
-    // 5. Password authentication
+    // 5. Check AUTHLIM
+    // ---------------------------------
+
+    Serial.print(F("[CHECK] AUTHLIM: "));
+    Serial.println(cfg.authLimit);
+
+    if (cfg.authLimit != 0) {
+
+        if (!waitForConfirmation()) {
+
+            Serial.println(F("[AUTH] Operation cancelled by user."));
+
+            finishCardOperation(originalUID);
+            return;
+        }
+    }
+    // ---------------------------------
+    // 6. Password authentication
     // ---------------------------------
 
     Serial.println(F("[AUTH] Executing PWD_AUTH..."));
@@ -273,7 +325,7 @@ void loop() {
     Serial.println(F("[AUTH] AUTHENTICATION SUCCESSFUL"));
 
     // ---------------------------------
-    // 6. Verify PACK
+    // 7. Verify PACK
     // ---------------------------------
 
     Serial.print(F("Received PACK: "));
@@ -303,3 +355,6 @@ void loop() {
 
     finishCardOperation(originalUID);
 }
+
+
+
